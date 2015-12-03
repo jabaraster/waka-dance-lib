@@ -68,8 +68,8 @@
 				<version>1.4.0</version>
 				<configuration>
 					<mainClass>info.jabara.wakadance.app.S3Sender</mainClass>
-<!-- 					<classpathScope>test</classpathScope>
- -->					<systemProperties>
+					<!-- <classpathScope>test</classpathScope> -->
+					<systemProperties>
 						<systemProperty>
 							<key>jpaPropertiesFilePath</key>
 							<value>db.properties</value>
@@ -79,4 +79,10 @@
 			</plugin>
 		</plugins>
 	</build>
+	<repositories>
+		<repository>
+			<id>jabaraster's repository</id>
+			<url>http://jabaraster.github.io/maven/</url>
+		</repository>
+	</repositories>
 </project>
