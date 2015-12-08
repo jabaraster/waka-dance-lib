@@ -4,7 +4,6 @@
 package info.jabara.wakadance.app;
 
 import java.io.BufferedInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -15,21 +14,15 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 
-import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.event.ProgressEvent;
 import com.amazonaws.event.ProgressListener;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.transfer.TransferManager;
-import com.amazonaws.services.s3.transfer.TransferManagerConfiguration;
 import com.amazonaws.services.s3.transfer.Upload;
 
-import jabara.general.EnvironmentUtil;
 import jabara.general.ExceptionUtil;
 import jabara.general.IoUtil;
 
@@ -38,7 +31,7 @@ import jabara.general.IoUtil;
  */
 public class S3Sender {
 
-    private static final Map<String, String> props = load();
+    private static final Map<String, String> props = AppUtil.loadProperties();
 
     /**
      * @param pArgs -
@@ -56,12 +49,6 @@ public class S3Sender {
         }
     }
 
-    private static AmazonS3 createS3Client() {
-        final AmazonS3 s3Client = new AmazonS3Client(new BasicAWSCredentials(props.get("awsAccessKey"), props.get("awsSecretKey"))); //$NON-NLS-1$ //$NON-NLS-2$
-        s3Client.setEndpoint("https://s3-ap-northeast-1.amazonaws.com"); //$NON-NLS-1$
-        return s3Client;
-    }
-
     private static void exec(final Connection conn) throws SQLException {
         final String sql = "select * from euploadfile where sendstate in ('UNUPLOAD','FAIL')"; //$NON-NLS-1$
         try (final PreparedStatement stmt = conn.prepareStatement(sql); //
@@ -75,34 +62,14 @@ public class S3Sender {
         }
     }
 
-    private static Map<String, String> load() {
-        final Properties p = new Properties();
-        try (final InputStream fileIn = new FileInputStream(EnvironmentUtil.getStringUnsafe("jpaPropertiesFilePath")); // //$NON-NLS-1$
-                final BufferedInputStream bufIn = IoUtil.toBuffered(fileIn)) {
-            p.load(bufIn);
-
-            final Map<String, String> ret = new HashMap<>();
-            for (final Map.Entry<Object, Object> entry : p.entrySet()) {
-                ret.put((String) entry.getKey(), (String) entry.getValue());
-            }
-            return ret;
-
-        } catch (final IOException e) {
-            throw ExceptionUtil.rethrow(e);
-        }
-    }
-
     @SuppressWarnings("nls")
     private static void send(final Connection conn, final long pDbKey, final String pLocalFilePath, final long pContentLength) throws SQLException {
         System.out.println(pLocalFilePath + " のS3への送信を開始."); //$NON-NLS-1$
         final String bucketName = props.get("bucketName"); //$NON-NLS-1$
         System.out.println("bucket名 -> " + bucketName);
 
-        final AmazonS3 s3Client = createS3Client();
-        final TransferManager manager = new TransferManager(s3Client);
-        final TransferManagerConfiguration c = new TransferManagerConfiguration();
-        c.setMinimumUploadPartSize(5/* MB */ * 1024 * 1024);
-        manager.setConfiguration(c);
+        final AmazonS3 s3Client = AppUtil.createS3Client(props);
+        final TransferManager manager = AppUtil.createTransferManager(s3Client, 5/* MB */);
 
         final Path path = Paths.get(pLocalFilePath);
         try (final InputStream fileIn = Files.newInputStream(path); //
